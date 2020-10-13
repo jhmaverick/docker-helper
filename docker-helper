@@ -158,20 +158,26 @@ source <(dhelper | grep "^DHELPER_variables_" \
 )
 
 # Da preferência para o valor de "APP_ENV" definido em .env
-if [[ -f "$PROJECT_ROOT/.env" ]]; then
+if [[ ! "$APP_ENV" && -f "$PROJECT_ROOT/.env" ]]; then
     source <(grep "^APP_ENV=" "$PROJECT_ROOT/.env")
 fi
+
+# Prioridade do APP_ENV
+#
+# 1. Inline. Ex: APP_ENV=testing ./docker-helper up
+# 2. .env
+# 3. docker-helper.yml
 export APP_ENV="${APP_ENV:-$_APP_ENV}"
 unset _APP_ENV
 
 # Carrega o .env para um tipo de ambiente
 if [[ "$APP_ENV" && -f "$PROJECT_ROOT/.env.$APP_ENV" ]]; then
-    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=)" "$PROJECT_ROOT/.env.$APP_ENV" | sed -E -n "s/[^#]+/export &/ p")
+    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=|APP_ENV=)" "$PROJECT_ROOT/.env.$APP_ENV" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
 # Carrega o restante das variáveis do .env
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
-    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=)" "$PROJECT_ROOT/.env" | sed -E -n "s/[^#]+/export &/ p")
+    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=|APP_ENV=)" "$PROJECT_ROOT/.env" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
 # Variáveis que não podem ser sobrescritas
