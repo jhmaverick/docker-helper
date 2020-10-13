@@ -37,15 +37,6 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.yaml" ]]; then
     export DOCKER_HELPER_FILE_NAME="docker-helper.yaml"
 fi
 
-# Inclui variáveis de arquivos .env
-env_read() {
-    local file="$1"
-
-    if [[ "$file" && -f "$file" ]];then
-        source <(sed -E -n "s/[^#]+/export &/ p" "$file")
-    fi
-}
-
 # Leitor de arquivos yaml
 #
 # https://gist.github.com/pkuczynski/8665367
@@ -135,27 +126,35 @@ get_docker_compose_files() {
 }
 
 exec_hook() {
-    local hook="$(echo "$1" | sed "s/-/_/")"
+    # Previne loop infinito ao chamar o docker-helper dentro de um hook
+    if [[ "$DHELPER_HOOK" ]]; then
+        return
+    fi
+
+    export DHELPER_HOOK="$(echo "$1" | sed "s/-/_/")"
     if [[ "$2" ]]; then
         # Hook especifico para um comando
-        hook="${hook}_${2}"
+        DHELPER_HOOK="${DHELPER_HOOK}_${2}"
     fi
 
     # Inclui hook definido no diretório hooks em docker-helper.d
-    if [[ -f "$PROJECT_ROOT/docker-helper.d/hooks/$hook" ]]; then
-        source "$PROJECT_ROOT/docker-helper.d/hooks/$hook"
+    if [[ -f "$PROJECT_ROOT/docker-helper.d/hooks/$DHELPER_HOOK" ]]; then
+        source "$PROJECT_ROOT/docker-helper.d/hooks/$DHELPER_HOOK"
     fi
 
     # Executa o hook definido no docker-helper
-    if [[ "$(dhelper_value "DHELPER_hooks_$hook")" ]]; then
-        bash -c "$(dhelper_value "DHELPER_hooks_$hook")"
+    if [[ "$(dhelper_value "DHELPER_hooks_$DHELPER_HOOK")" ]]; then
+        bash -c "$(dhelper_value "DHELPER_hooks_$DHELPER_HOOK")"
     fi
+
+    unset DHELPER_HOOK
 }
 
 # Carrega as Variáveis do docker-helper.yml
 source <(dhelper | grep "^DHELPER_variables_" \
-        | grep -Ev "^(DHELPER_variables__APP_ENV|DHELPER_variables_PROJECT_ROOT)" \
-        | sed -E "s/^DHELPER_variables_//g;s/^APP_ENV=/_APP_ENV=/;s/^(.*)$/export \1/g"
+        | sed -E "s/^DHELPER_variables_//g" \
+        | grep -Ev "^(_APP_ENV|DHELPER_|PROJECT_ROOT=)" \
+        | sed -E "s/^APP_ENV=/_APP_ENV=/;s/^(.*)$/export \1/g"
 )
 
 # Da preferência para o valor de "APP_ENV" definido em .env
@@ -166,12 +165,14 @@ export APP_ENV="${APP_ENV:-$_APP_ENV}"
 unset _APP_ENV
 
 # Carrega o .env para um tipo de ambiente
-if [[ "$APP_ENV" ]]; then
-    env_read "$PROJECT_ROOT/.env.$APP_ENV"
+if [[ "$APP_ENV" && -f "$PROJECT_ROOT/.env.$APP_ENV" ]]; then
+    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=)" "$PROJECT_ROOT/.env.$APP_ENV" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
 # Carrega o restante das variáveis do .env
-env_read "$PROJECT_ROOT/.env"
+if [[ -f "$PROJECT_ROOT/.env" ]]; then
+    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=)" "$PROJECT_ROOT/.env" | sed -E -n "s/[^#]+/export &/ p")
+fi
 
 # Variáveis que não podem ser sobrescritas
 export COMPOSE_FILE="$(get_docker_compose_files)"
@@ -192,7 +193,7 @@ elif [[ "$(echo "${args[0]}" | grep -e "-cli$")" && "$(docker-compose ps --servi
     # Inicia um serviço do docker-compose para rodar um comando adicionando argumentos para otimizar a execução
     # O serviço iniciado é o mesmo do nome do comando sem o "-cli" no final
 
-    command_name="$(echo "${args[0]}" | sed "s/-/_/")"
+    command_name="${args[0]}"
     exec_hook "pre_commands"
     exec_hook "pre_command_$command_name"
 
@@ -229,7 +230,7 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
 elif [[ "$(dhelper_value "DHELPER_scripts_$(echo "${args[0]}" | sed "s/-/_/")")" ]]; then
     # Executa o script definido no docker-helper
 
-    command_name="$(echo "${args[0]}" | sed "s/-/_/")"
+    command_name="${args[0]}"
     exec_hook "pre_commands"
     exec_hook "pre_command_$command_name"
 
