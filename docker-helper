@@ -227,7 +227,7 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
 
     # Aplica o caminho completo para um script da aplicação
     args[0]="$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}"
-    exec "${args[@]}"
+    "${args[@]}"
 
     exec_hook "post_command_$command_name"
     exec_hook "post_commands"
@@ -240,10 +240,7 @@ elif [[ "$(dhelper_value "DHELPER_scripts_$(echo "${args[0]}" | sed "s/-/_/")")"
     exec_hook "pre_commands"
     exec_hook "pre_command_$command_name"
 
-    # Executa o script passando o restante dos parâmetros para ele
-    unset args[0]
-    exec $(dhelper_value "DHELPER_scripts_$command_name") "${args[@]}"
-    #bash -c "$(dhelper_value "DHELPER_scripts_$command_name")"
+    bash -c "$(dhelper_value "DHELPER_scripts_$command_name")"
 
     exec_hook "post_command_$command_name"
     exec_hook "post_commands"
