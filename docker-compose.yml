@@ -1,0 +1,12 @@
+version: "3"
+
+services:
+
+  nginx:
+    container_name: "${PROJECT_NAME:?}-nginx"
+    image: "nginx:latest"
+    ports:
+      - "${SERVER_PORT:?}:${SERVER_PORT:?}"
+    environment:
+      - NGINX_HOST=${SERVER_HOST:?}
+      - NGINX_PORT=${SERVER_PORT:?}

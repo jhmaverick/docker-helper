@@ -1,0 +1,37 @@
+### Projeto
+/data/
+/hook-test/
+
+### Docker
+/**/docker-compose.override.yml
+
+### JetBrains
+## Ignorar todos os arquivos do diretório .idea ...
+/.idea/*
+
+## Exceto ...
+# Informações do Modulo principal e seus Diretórios
+!/.idea/modules.xml
+!/.idea/*.iml
+!/.idea/webResources.xml
+
+# Configurações de execução
+!/.idea/runConfigurations/
+
+# Escopos
+!/.idea/scopes/
+
+# Formatação do código
+!/.idea/codeStyles/codeStyleConfig.xml
+!/.idea/codeStyles/Project.xml
+
+# Informações de linguagens e codificações
+!/.idea/encodings.xml
+!/.idea/vcs.xml
+!/.idea/misc.xml
+!/.idea/sqldialects.xml
+!/.idea/externalDependencies.xml
+
+### Não organizados
+
+

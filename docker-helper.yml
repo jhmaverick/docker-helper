@@ -1,0 +1,20 @@
+variables:
+  APP_ENV: production
+  SERVER_HOST: localhost
+  SERVER_PORT: 8080
+
+compose_files:
+  - docker-compose.custom.yml
+  - docker-compose.custom2.yml
+
+scripts:
+  test1: "docker ps"
+  test2: "bash docker-helper nginx-cli"
+  prod: "docker-compose up -d"
+  dev: "docker-compose up --force-recreate"
+  recreate: "docker-compose rm -sf && docker-compose up -d"
+  update: "docker-compose pull && bash docker-helper recreate"
+  remove_all: "docker-compose rm -sf"
+
+hooks:
+  init: "mkdir -p $PROJECT_ROOT/hook-test/test1"
