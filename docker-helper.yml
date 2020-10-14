@@ -5,7 +5,6 @@ variables:
 
 scripts:
   test1: "docker ps"
-  test2: "bash docker-helper nginx-cli"
   prod: "docker-compose up -d"
   dev: "docker-compose up --force-recreate"
   recreate: "docker-compose rm -sf && docker-compose up -d"

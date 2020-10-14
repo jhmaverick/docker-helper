@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+echo "== Docker Helper Vars"
+echo "PROJECT_ROOT: ${PROJECT_ROOT}"
+echo "PROJECT_NAME: ${PROJECT_NAME}"
+echo "COMPOSE_FILE: ${COMPOSE_FILE}"
+echo "USER_ID: ${USER_ID}"
+echo "GROUP_ID: ${GROUP_ID}"
+echo "DOCKER_GROUP_ID: ${DOCKER_GROUP_ID}"
+echo
+
+echo "== Project Vars"
+echo "DOCKER_ENV: ${DOCKER_ENV}"
+echo "SERVER_HOST: ${SERVER_HOST}"
+echo "SERVER_PORT: ${SERVER_PORT}"
+echo
