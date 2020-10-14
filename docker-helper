@@ -37,6 +37,14 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.yaml" ]]; then
     export DOCKER_HELPER_FILE_NAME="docker-helper.yaml"
 fi
 
+# Verifica se um valor é verdadeiro
+is_true() {
+    if [[ "${1,,}" == "true" || "${1,,}" == "yes" || "${1,,}" == "y" || "${1,,}" == '1' ]]; then
+        echo '1'
+    fi
+}
+export -f is_true
+
 # Leitor de arquivos yaml
 #
 # https://gist.github.com/pkuczynski/8665367
@@ -73,11 +81,13 @@ parse_yaml() {
         }
     }'
 }
+export -f parse_yaml
 
 # Atalho para carregar valores do docker-helper.yml
 dhelper() {
     parse_yaml "$PROJECT_ROOT/$DOCKER_HELPER_FILE_NAME" "DHELPER_"
 }
+export -f dhelper
 
 # Obtém um valor no docker-helper.yml
 dhelper_value() {
@@ -86,6 +96,7 @@ dhelper_value() {
         eval 'echo $'$1
     fi
 }
+export -f dhelper_value
 
 # Obtém os arquivos que serão aplicados na variável COMPOSE_FILE
 get_docker_compose_files() {
@@ -217,6 +228,19 @@ elif [[ "$(echo "${args[0]}" | grep -e "-cli$")" && "$(docker-compose ps --servi
     exec_hook "post_commands"
 
     exit 0
+elif [[ "$(dhelper_value "DHELPER_scripts_$(echo "${args[0]}" | sed "s/-/_/")")" ]]; then
+    # Executa o script definido no docker-helper.yml
+
+    command_name="${args[0]}"
+    exec_hook "pre_commands"
+    exec_hook "pre_command_$command_name"
+
+    bash -c "$(dhelper_value "DHELPER_scripts_$command_name")"
+
+    exec_hook "post_command_$command_name"
+    exec_hook "post_commands"
+
+    exit 0
 elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
     # Executa scripts do diretório docker-helper.d
 
@@ -232,19 +256,6 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
     # Aplica o caminho completo para um script da aplicação
     args[0]="$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}"
     "${args[@]}"
-
-    exec_hook "post_command_$command_name"
-    exec_hook "post_commands"
-
-    exit 0
-elif [[ "$(dhelper_value "DHELPER_scripts_$(echo "${args[0]}" | sed "s/-/_/")")" ]]; then
-    # Executa o script definido no docker-helper
-
-    command_name="${args[0]}"
-    exec_hook "pre_commands"
-    exec_hook "pre_command_$command_name"
-
-    bash -c "$(dhelper_value "DHELPER_scripts_$command_name")"
 
     exec_hook "post_command_$command_name"
     exec_hook "post_commands"
