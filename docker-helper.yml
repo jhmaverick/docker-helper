@@ -1,11 +1,7 @@
 variables:
-  APP_ENV: production
+  DOCKER_ENV: production
   SERVER_HOST: localhost
   SERVER_PORT: 8080
-
-compose_files:
-  - docker-compose.custom.yml
-  - docker-compose.custom2.yml
 
 scripts:
   test1: "docker ps"

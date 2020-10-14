@@ -90,31 +90,31 @@ dhelper_value() {
 # Obtém os arquivos que serão aplicados na variável COMPOSE_FILE
 get_docker_compose_files() {
     local compose_files="$PROJECT_ROOT/$COMPOSE_FILE_NAME"
-    local file_list
-    local count
-    local total
+    #local file_list
+    #local count
+    #local total
 
-    if [[ "$APP_ENV" && -f "$PROJECT_ROOT/docker-compose.$APP_ENV.yml" ]]; then
-        compose_files+=":$PROJECT_ROOT/docker-compose.$APP_ENV.yml"
-    elif [[ "$APP_ENV" && -f "$PROJECT_ROOT/docker-compose.$APP_ENV.yaml" ]]; then
-        compose_files+=":$PROJECT_ROOT/docker-compose.$APP_ENV.yaml"
+    if [[ "$DOCKER_ENV" && -f "$PROJECT_ROOT/docker-compose.$DOCKER_ENV.yml" ]]; then
+        compose_files+=":$PROJECT_ROOT/docker-compose.$DOCKER_ENV.yml"
+    elif [[ "$DOCKER_ENV" && -f "$PROJECT_ROOT/docker-compose.$DOCKER_ENV.yaml" ]]; then
+        compose_files+=":$PROJECT_ROOT/docker-compose.$DOCKER_ENV.yaml"
     fi
 
     # Carrega os arquivos declarados
-    file_list="$(dhelper | grep "^DHELPER_compose_files_" | sed -E "s/^(.*)$/local \1/g")"
-    source <(echo "$file_list")
-
-    count=1
-    total=$(echo "$file_list" | wc -l)
-    while ((  count <= total )); do
-        file="$( eval 'echo $DHELPER_compose_files_'$count )"
-
-        if [[ -f "$PROJECT_ROOT/$file" ]]; then
-            compose_files+=":$file"
-        fi
-
-          count=$(( count + 1 ));
-    done
+    #file_list="$(dhelper | grep "^DHELPER_compose_files_" | sed -E "s/^(.*)$/local \1/g")"
+    #source <(echo "$file_list")
+    #
+    #count=1
+    #total=$(echo "$file_list" | wc -l)
+    #while ((  count <= total )); do
+    #    file="$( eval 'echo $DHELPER_compose_files_'$count )"
+    #
+    #    if [[ -f "$PROJECT_ROOT/$file" ]]; then
+    #        compose_files+=":$file"
+    #    fi
+    #
+    #      count=$(( count + 1 ));
+    #done
 
     if [[ -f "$PROJECT_ROOT/docker-compose.override.yml" ]]; then
         compose_files+=":$PROJECT_ROOT/docker-compose.override.yml"
@@ -153,35 +153,39 @@ exec_hook() {
 # Carrega as Variáveis do docker-helper.yml
 source <(dhelper | grep "^DHELPER_variables_" \
         | sed -E "s/^DHELPER_variables_//g" \
-        | grep -Ev "^(_APP_ENV|DHELPER_|PROJECT_ROOT=)" \
-        | sed -E "s/^APP_ENV=/_APP_ENV=/;s/^(.*)$/export \1/g"
+        | grep -Ev "^(DOCKER_ENV_TMP|DHELPER_|PROJECT_ROOT=)" \
+        | sed -E "s/^DOCKER_ENV=/DOCKER_ENV_TMP=/;s/^(.*)$/export \1/g"
 )
 
-# Da preferência para o valor de "APP_ENV" definido em .env
-if [[ ! "$APP_ENV" && -f "$PROJECT_ROOT/.env" ]]; then
-    source <(grep "^APP_ENV=" "$PROJECT_ROOT/.env")
+# Tenta carregar a variável "DOCKER_ENV" do arquivo ".env" se ela não tiver sido definida inline
+if [[ ! "$DOCKER_ENV" && -f "$PROJECT_ROOT/.env" ]]; then
+    source <(grep "^DOCKER_ENV=" "$PROJECT_ROOT/.env")
 fi
 
-# Prioridade do APP_ENV
+# Prioridade de uso do DOCKER_ENV
 #
-# 1. Inline. Ex: APP_ENV=testing ./docker-helper up
-# 2. .env
-# 3. docker-helper.yml
-export APP_ENV="${APP_ENV:-$_APP_ENV}"
-unset _APP_ENV
+# 1. Inline - Ex: DOCKER_ENV=testing ./docker-helper up
+# 2. Definido no .env
+# 3. Definido nas variáveis do docker-helper.yml
+# 4. Valor padrão "production"
+DOCKER_ENV="${DOCKER_ENV:-$DOCKER_ENV_TMP}"
+DOCKER_ENV="${DOCKER_ENV:-production}"
+export DOCKER_ENV
+unset DOCKER_ENV_TMP
 
-# Carrega o .env para um tipo de ambiente
-if [[ "$APP_ENV" && -f "$PROJECT_ROOT/.env.$APP_ENV" ]]; then
-    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=|APP_ENV=)" "$PROJECT_ROOT/.env.$APP_ENV" | sed -E -n "s/[^#]+/export &/ p")
+# Carrega o .env para o tipo de ambiente
+if [[ "$DOCKER_ENV" && -f "$PROJECT_ROOT/.env.$DOCKER_ENV" ]]; then
+    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=|DOCKER_ENV=)" "$PROJECT_ROOT/.env.$DOCKER_ENV" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
-# Carrega o restante das variáveis do .env
+# Carrega o restante das variáveis do ".env"
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
-    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=|APP_ENV=)" "$PROJECT_ROOT/.env" | sed -E -n "s/[^#]+/export &/ p")
+    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=|DOCKER_ENV=)" "$PROJECT_ROOT/.env" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
-# Variáveis que não podem ser sobrescritas
-export COMPOSE_FILE="$(get_docker_compose_files)"
+# Lista dos arquivos docker-compose.yml que serão usados
+export COMPOSE_FILE="${COMPOSE_FILE:-$(get_docker_compose_files)}"
+
 
 args=( "$@" )
 

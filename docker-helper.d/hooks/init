@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-if [[ "$APP_ENV" == "local" || "$APP_ENV" == "testing" ]]; then
+if [[ "$DOCKER_ENV" == "local" || "$DOCKER_ENV" == "testing" ]]; then
     mkdir -p "$PROJECT_ROOT/hook-test/test2"
 fi

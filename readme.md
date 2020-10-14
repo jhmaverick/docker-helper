@@ -23,16 +23,10 @@ Ex: `bash docker-helper <cmd>` or `./docker-helper <cmd>`
 Create the `docker-helper.yml` in the same directory as `docker-compose.yml`.
 
 ```yaml
-# Variables to use in scripts and docker-compose.yml
 variables:
-  APP_ENV: production
+  DOCKER_ENV: production
   SERVER_HOST: localhost
   SERVER_PORT: 8080
-
-# Compose files to be called between docker-compose.yml and docker-compose.override.yml
-compose_files:
-  - docker-compose.custom.yml
-  - docker-compose.custom2.yml
 
 scripts:
   prod: "docker-compose up -d"
@@ -47,8 +41,8 @@ hooks:
 
 ## Environment
 
-If "APP_ENV" is defined in the .env file or docker-helper.yml, the "docker-compose.<APP_ENV>.yml" 
-and ".env.<APP_ENV>" will be loaded automatically if they exist.
+If "DOCKER_ENV" is defined in the .env file or docker-helper.yml, the "docker-compose.<DOCKER_ENV>.yml" 
+and ".env.<DOCKER_ENV>" will be loaded automatically if they exist.
 
 
 ## Variables
