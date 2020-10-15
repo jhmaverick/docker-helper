@@ -210,24 +210,6 @@ if [[ "${args[0]}" == "version" || "${args[0]}" == "--version" || "${args[0]}" =
     docker --version
 
     exit 0
-elif [[ "$(echo "${args[0]}" | grep -e "-cli$")" && "$(docker-compose ps --services | grep -e "^$(echo "${args[0]}" | sed "s/-cli$//")$")" ]]; then
-    # Inicia um serviço do docker-compose para rodar um comando adicionando argumentos para otimizar a execução
-    # O serviço iniciado é o mesmo do nome do comando sem o "-cli" no final
-
-    command_name="${args[0]}"
-    exec_hook "pre_commands"
-    exec_hook "pre_command_$command_name"
-
-    args[0]="$(echo "${args[0]}" | sed "s/-cli$//")"
-    docker-compose run --rm --no-deps \
-        -v "$PROJECT_ROOT":"$PROJECT_ROOT" \
-        -w "$PWD" \
-        "${args[@]}"
-
-    exec_hook "post_command_$command_name"
-    exec_hook "post_commands"
-
-    exit 0
 elif [[ "$(dhelper_value "DHELPER_scripts_$(echo "${args[0]}" | sed "s/-/_/")")" ]]; then
     # Executa o script definido no docker-helper.yml
 
@@ -256,6 +238,24 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
     # Aplica o caminho completo para um script da aplicação
     args[0]="$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}"
     "${args[@]}"
+
+    exec_hook "post_command_$command_name"
+    exec_hook "post_commands"
+
+    exit 0
+elif [[ "$(echo "${args[0]}" | grep -e "-cli$")" && "$(docker-compose ps --services | grep -e "^$(echo "${args[0]}" | sed "s/-cli$//")$")" ]]; then
+    # Inicia um serviço do docker-compose para rodar um comando adicionando argumentos para otimizar a execução
+    # O serviço iniciado é o mesmo do nome do comando sem o "-cli" no final
+
+    command_name="${args[0]}"
+    exec_hook "pre_commands"
+    exec_hook "pre_command_$command_name"
+
+    args[0]="$(echo "${args[0]}" | sed "s/-cli$//")"
+    docker-compose run --rm --no-deps \
+        -v "$PROJECT_ROOT":"$PROJECT_ROOT" \
+        -w "$PWD" \
+        "${args[@]}"
 
     exec_hook "post_command_$command_name"
     exec_hook "post_commands"
