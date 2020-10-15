@@ -7,7 +7,7 @@ cd "$DIRNAME" || exit
 rm -rf ./hook-test
 
 # Default script for running command line in services
-bash ./docker-helper nginx-cli bash -c "cd / && ls -l"
+bash ./docker-helper nginx-exec bash -c "cd / && ls -l"
 echo -e "Test 1 finished\n"
 sleep 1
 

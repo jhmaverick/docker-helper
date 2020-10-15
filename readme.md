@@ -58,10 +58,10 @@ and ".env.<DOCKER_ENV>" will be loaded automatically if they exist.
 
 Scripts can be created in the "scripts" index in docker-helper.yml or in the "docker-helper.d/scripts/" directory.
 
-You can run a command using a service by running "<service_name>-cli".
+You can run a command using a service by running "<service_name>-exec".
 The container will be created without dependencies and using the "project_root" as a volume keeping the current directory. The container will be removed after execution.
 
-Ex: `./docker-helper nginx-cli /usr/sbin/nginx -v`
+Ex: `./docker-helper nginx-exec /usr/sbin/nginx -v`
 
 
 ## Hooks

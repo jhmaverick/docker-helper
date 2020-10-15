@@ -19,6 +19,7 @@ get_project_root() {
     fi
 }
 
+export DHELPER_PATH="$(readlink -f "${BASH_SOURCE[0]}")"
 export PROJECT_ROOT="$(get_project_root "$PWD")"
 export PROJECT_NAME="${PROJECT_NAME:-$(basename -- "$PROJECT_ROOT")}"
 export USER_ID="$(id -u)"
@@ -84,19 +85,30 @@ parse_yaml() {
 export -f parse_yaml
 
 # Atalho para carregar valores do docker-helper.yml
-dhelper() {
+dhelper_yaml() {
     parse_yaml "$PROJECT_ROOT/$DOCKER_HELPER_FILE_NAME" "DHELPER_"
 }
-export -f dhelper
+export -f dhelper_yaml
 
 # Obtém um valor no docker-helper.yml
-dhelper_value() {
+dhelper_yaml_get() {
     if [[ "$1" ]]; then
-        eval $(dhelper | sed -E "s/^(.*)$/local \1/g")
+        eval $(dhelper_yaml | sed -E "s/^(.*)$/local \1/g")
         eval 'echo $'$1
     fi
 }
-export -f dhelper_value
+export -f dhelper_yaml_get
+
+# Atalho para simplificar o uso do executáveis do docker-helper instalados em projetos nos scripts
+docker-helper() {
+    bash "$DHELPER_PATH" "$@"
+}
+export -f docker-helper
+
+dhelper() {
+    bash "$DHELPER_PATH" "$@"
+}
+export -f dhelper
 
 # Obtém os arquivos que serão aplicados na variável COMPOSE_FILE
 get_docker_compose_files() {
@@ -112,7 +124,7 @@ get_docker_compose_files() {
     fi
 
     # Carrega os arquivos declarados
-    #file_list="$(dhelper | grep "^DHELPER_compose_files_" | sed -E "s/^(.*)$/local \1/g")"
+    #file_list="$(dhelper_yaml | grep "^DHELPER_compose_files_" | sed -E "s/^(.*)$/local \1/g")"
     #source <(echo "$file_list")
     #
     #count=1
@@ -154,15 +166,15 @@ exec_hook() {
     fi
 
     # Executa o hook definido no docker-helper
-    if [[ "$(dhelper_value "DHELPER_hooks_$DHELPER_HOOK")" ]]; then
-        bash -c "$(dhelper_value "DHELPER_hooks_$DHELPER_HOOK")"
+    if [[ "$(dhelper_yaml_get "DHELPER_hooks_$DHELPER_HOOK")" ]]; then
+        bash -c "$(dhelper_yaml_get "DHELPER_hooks_$DHELPER_HOOK")"
     fi
 
     unset DHELPER_HOOK
 }
 
 # Carrega as Variáveis do docker-helper.yml
-source <(dhelper | grep "^DHELPER_variables_" \
+source <(dhelper_yaml | grep "^DHELPER_variables_" \
         | sed -E "s/^DHELPER_variables_//g" \
         | grep -Ev "^(DOCKER_ENV_TMP|DHELPER_|PROJECT_ROOT=)" \
         | sed -E "s/^DOCKER_ENV=/DOCKER_ENV_TMP=/;s/^(.*)$/export \1/g"
@@ -210,14 +222,14 @@ if [[ "${args[0]}" == "version" || "${args[0]}" == "--version" || "${args[0]}" =
     docker --version
 
     exit 0
-elif [[ "$(dhelper_value "DHELPER_scripts_$(echo "${args[0]}" | sed "s/-/_/")")" ]]; then
+elif [[ "$(dhelper_yaml_get "DHELPER_scripts_$(echo "${args[0]}" | sed "s/-/_/")")" ]]; then
     # Executa o script definido no docker-helper.yml
 
     command_name="${args[0]}"
     exec_hook "pre_commands"
     exec_hook "pre_command_$command_name"
 
-    bash -c "$(dhelper_value "DHELPER_scripts_$command_name")"
+    bash -c "$(dhelper_yaml_get "DHELPER_scripts_$command_name")"
 
     exec_hook "post_command_$command_name"
     exec_hook "post_commands"
@@ -243,15 +255,15 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
     exec_hook "post_commands"
 
     exit 0
-elif [[ "$(echo "${args[0]}" | grep -e "-cli$")" && "$(docker-compose ps --services | grep -e "^$(echo "${args[0]}" | sed "s/-cli$//")$")" ]]; then
+elif [[ "$(echo "${args[0]}" | grep -e "-exec$")" && "$(docker-compose ps --services | grep -e "^$(echo "${args[0]}" | sed "s/-exec$//")$")" ]]; then
     # Inicia um serviço do docker-compose para rodar um comando adicionando argumentos para otimizar a execução
-    # O serviço iniciado é o mesmo do nome do comando sem o "-cli" no final
+    # O serviço iniciado é o mesmo do nome do comando sem o "-exec" no final
 
     command_name="${args[0]}"
     exec_hook "pre_commands"
     exec_hook "pre_command_$command_name"
 
-    args[0]="$(echo "${args[0]}" | sed "s/-cli$//")"
+    args[0]="$(echo "${args[0]}" | sed "s/-exec$//")"
     docker-compose run --rm --no-deps \
         -v "$PROJECT_ROOT":"$PROJECT_ROOT" \
         -w "$PWD" \
