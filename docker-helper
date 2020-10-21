@@ -222,7 +222,7 @@ if [[ "${args[0]}" == "version" || "${args[0]}" == "--version" || "${args[0]}" =
     docker --version
 
     exit 0
-elif [[ "$(dhelper_yaml_get "DHELPER_scripts_$(echo "${args[0]}" | sed "s/-/_/")")" ]]; then
+elif [[ ! "$(echo "${args[0]}" | grep "-")" && "$(dhelper_yaml_get "DHELPER_scripts_${args[0]}")" ]]; then
     # Executa o script definido no docker-helper.yml
 
     command_name="${args[0]}"
