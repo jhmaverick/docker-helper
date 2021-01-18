@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export DOCKER_HELPER_VERSION=1.0.0
+export DOCKER_HELPER_VERSION=1.0.1
 
 # O diretório com docker-compose.yml será o PROJECT_ROOT
 get_project_root() {
@@ -154,7 +154,7 @@ exec_hook() {
         return
     fi
 
-    export DHELPER_HOOK="$(echo "$1" | sed "s/-/_/")"
+    export DHELPER_HOOK="$(echo "$1" | sed "s/-/_/g")"
     if [[ "$2" ]]; then
         # Hook especifico para um comando
         DHELPER_HOOK="${DHELPER_HOOK}_${2}"
