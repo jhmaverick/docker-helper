@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export DOCKER_HELPER_VERSION=1.0.1
+export DOCKER_HELPER_VERSION=1.0.2
 
 # O diretório com docker-compose.yml será o PROJECT_ROOT
 get_project_root() {
@@ -214,7 +214,11 @@ args=( "$@" )
 
 exec_hook "init"
 
-if [[ "${args[0]}" == "version" || "${args[0]}" == "--version" || "${args[0]}" == "-v" ]]; then
+if [[ "${args[0]}" == "dh-update" ]]; then
+    # Re-instala o executável
+    curl -L "https://raw.githubusercontent.com/jhmaverick/docker-helper/master/docker-helper" -o "$DHELPER_PATH"
+    chmod +x "$DHELPER_PATH"
+elif [[ "${args[0]}" == "version" || "${args[0]}" == "--version" || "${args[0]}" == "-v" ]]; then
     # Exibe a versão atual do docker-helper, docker-compose e docker
 
     echo "docker-helper version $DOCKER_HELPER_VERSION"
