@@ -218,6 +218,8 @@ if [[ "${args[0]}" == "dh-update" ]]; then
     # Re-instala o executável
     curl -L "https://raw.githubusercontent.com/jhmaverick/docker-helper/master/docker-helper" -o "$DHELPER_PATH"
     chmod +x "$DHELPER_PATH"
+
+    exit 0
 elif [[ "${args[0]}" == "version" || "${args[0]}" == "--version" || "${args[0]}" == "-v" ]]; then
     # Exibe a versão atual do docker-helper, docker-compose e docker
 
