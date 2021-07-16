@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export DOCKER_HELPER_VERSION=1.0.2
+export DOCKER_HELPER_VERSION=1.0.3
 
 # O diretório com docker-compose.yml será o PROJECT_ROOT
 get_project_root() {
@@ -54,24 +54,25 @@ parse_yaml() {
     local prefix="$2"
     local s='[[:space:]]*'
     local w='[a-zA-Z0-9_]*'
-    local fs=$(echo @|tr @ '\034')
+    local fs=$(echo @ | tr @ '\034')
 
     if [[ ! -f "$yaml_file" ]]; then
         return
     fi
 
-    sed -ne "s|,$s\]$s\$|]|" \
-        -e ":1;s|^\($s\)\($w\)$s:$s\[$s\(.*\)$s,$s\(.*\)$s\]|\1\2: [\3]\n\1  - \4|;t1" \
-        -e "s|^\($s\)\($w\)$s:$s\[$s\(.*\)$s\]|\1\2:\n\1  - \3|;p" "$yaml_file" | \
-    sed -ne "s|,$s}$s\$|}|" \
-        -e ":1;s|^\($s\)-$s{$s\(.*\)$s,$s\($w\)$s:$s\(.*\)$s}|\1- {\2}\n\1  \3: \4|;t1" \
-        -e    "s|^\($s\)-$s{$s\(.*\)$s}|\1-\n\1  \2|;p" | \
-    sed -ne "s|^\($s\):|\1|" \
-        -e "s|^\($s\)-$s[\"']\(.*\)[\"']$s\$|\1$fs$fs\2|p" \
-        -e "s|^\($s\)-$s\(.*\)$s\$|\1$fs$fs\2|p" \
-        -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
-        -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" | \
-    awk -F$fs '{
+    sed 's/\r//g' "$yaml_file" |
+        sed -ne "s|,$s\]$s\$|]|" \
+            -e ":1;s|^\($s\)\($w\)$s:$s\[$s\(.*\)$s,$s\(.*\)$s\]|\1\2: [\3]\n\1  - \4|;t1" \
+            -e "s|^\($s\)\($w\)$s:$s\[$s\(.*\)$s\]|\1\2:\n\1  - \3|;p" |
+        sed -ne "s|,$s}$s\$|}|" \
+            -e ":1;s|^\($s\)-$s{$s\(.*\)$s,$s\($w\)$s:$s\(.*\)$s}|\1- {\2}\n\1  \3: \4|;t1" \
+            -e "s|^\($s\)-$s{$s\(.*\)$s}|\1-\n\1  \2|;p" |
+        sed -ne "s|^\($s\):|\1|" \
+            -e "s|^\($s\)-$s[\"']\(.*\)[\"']$s\$|\1$fs$fs\2|p" \
+            -e "s|^\($s\)-$s\(.*\)$s\$|\1$fs$fs\2|p" \
+            -e "s|^\($s\)\($w\)$s:$s[\"']\(.*\)[\"']$s\$|\1$fs\2$fs\3|p" \
+            -e "s|^\($s\)\($w\)$s:$s\(.*\)$s\$|\1$fs\2$fs\3|p" |
+        awk -F$fs '{
         indent = length($1)/2;
         vname[indent] = $2;
         for (i in vname) {if (i > indent) {delete vname[i]; idx[i]=0}}
@@ -174,15 +175,16 @@ exec_hook() {
 }
 
 # Carrega as Variáveis do docker-helper.yml
-source <(dhelper_yaml | grep "^DHELPER_variables_" \
-        | sed -E "s/^DHELPER_variables_//g" \
-        | grep -Ev "^(DOCKER_ENV_TMP|DHELPER_|PROJECT_ROOT=)" \
-        | sed -E "s/^DOCKER_ENV=/DOCKER_ENV_TMP=/;s/^(.*)$/export \1/g"
+source <(
+    dhelper_yaml | grep "^DHELPER_variables_" |
+        sed -E "s/^DHELPER_variables_//g" |
+        grep -Ev "^(DOCKER_ENV_TMP|DHELPER_|PROJECT_ROOT=)" |
+        sed -E "s/^DOCKER_ENV=/DOCKER_ENV_TMP=/;s/^(.*)$/export \1/g"
 )
 
 # Tenta carregar a variável "DOCKER_ENV" do arquivo ".env" se ela não tiver sido definida inline
 if [[ ! "$DOCKER_ENV" && -f "$PROJECT_ROOT/.env" ]]; then
-    source <(grep "^DOCKER_ENV=" "$PROJECT_ROOT/.env")
+    source <(sed 's/\r//g' "$PROJECT_ROOT/.env" | grep "^DOCKER_ENV=")
 fi
 
 # Prioridade de uso do DOCKER_ENV
@@ -198,19 +200,18 @@ unset DOCKER_ENV_TMP
 
 # Carrega o .env para o tipo de ambiente
 if [[ "$DOCKER_ENV" && -f "$PROJECT_ROOT/.env.$DOCKER_ENV" ]]; then
-    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=|DOCKER_ENV=)" "$PROJECT_ROOT/.env.$DOCKER_ENV" | sed -E -n "s/[^#]+/export &/ p")
+    source <(sed 's/\r//g' "$PROJECT_ROOT/.env.$DOCKER_ENV" | grep -Ev "^(DHELPER_|PROJECT_ROOT=|DOCKER_ENV=)" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
 # Carrega o restante das variáveis do ".env"
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
-    source <(grep -Ev "^(DHELPER_|PROJECT_ROOT=|DOCKER_ENV=)" "$PROJECT_ROOT/.env" | sed -E -n "s/[^#]+/export &/ p")
+    source <(sed 's/\r//g' "$PROJECT_ROOT/.env" | grep -Ev "^(DHELPER_|PROJECT_ROOT=|DOCKER_ENV=)" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
 # Lista dos arquivos docker-compose.yml que serão usados
 export COMPOSE_FILE="${COMPOSE_FILE:-$(get_docker_compose_files)}"
 
-
-args=( "$@" )
+args=("$@")
 
 exec_hook "init"
 
