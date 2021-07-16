@@ -114,31 +114,12 @@ export -f dhelper
 # Obtém os arquivos que serão aplicados na variável COMPOSE_FILE
 get_docker_compose_files() {
     local compose_files="$PROJECT_ROOT/$COMPOSE_FILE_NAME"
-    #local file_list
-    #local count
-    #local total
 
     if [[ "$DOCKER_ENV" && -f "$PROJECT_ROOT/docker-compose.$DOCKER_ENV.yml" ]]; then
         compose_files+=":$PROJECT_ROOT/docker-compose.$DOCKER_ENV.yml"
     elif [[ "$DOCKER_ENV" && -f "$PROJECT_ROOT/docker-compose.$DOCKER_ENV.yaml" ]]; then
         compose_files+=":$PROJECT_ROOT/docker-compose.$DOCKER_ENV.yaml"
     fi
-
-    # Carrega os arquivos declarados
-    #file_list="$(dhelper_yaml | grep "^DHELPER_compose_files_" | sed -E "s/^(.*)$/local \1/g")"
-    #source <(echo "$file_list")
-    #
-    #count=1
-    #total=$(echo "$file_list" | wc -l)
-    #while ((  count <= total )); do
-    #    file="$( eval 'echo $DHELPER_compose_files_'$count )"
-    #
-    #    if [[ -f "$PROJECT_ROOT/$file" ]]; then
-    #        compose_files+=":$file"
-    #    fi
-    #
-    #      count=$(( count + 1 ));
-    #done
 
     if [[ -f "$PROJECT_ROOT/docker-compose.override.yml" ]]; then
         compose_files+=":$PROJECT_ROOT/docker-compose.override.yml"
