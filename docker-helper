@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export DOCKER_HELPER_VERSION=1.0.3
+export DOCKER_HELPER_VERSION=1.0.4
 
 # O diretório com docker-compose.yml será o PROJECT_ROOT
 get_project_root() {
@@ -110,6 +110,29 @@ dhelper() {
     bash "$DHELPER_PATH" "$@"
 }
 export -f dhelper
+
+int_version() {
+    echo "$@" | awk -F. '{ printf("%d%04d%04d%04d\n", $1,$2,$3,$4); }'
+}
+export -f int_version
+
+version_compare() {
+    local version_a="$1"
+    local version_b="$2"
+
+    local num_version_a num_version_b
+    num_version_a=$(int_version "$version_a")
+    num_version_b=$(int_version "$version_b")
+
+    if ((num_version_a < num_version_b)); then
+        echo "-1"
+    elif ((num_version_a > num_version_b)); then
+        echo "1"
+    else
+        echo "0"
+    fi
+}
+export -f version_compare
 
 # Obtém os arquivos que serão aplicados na variável COMPOSE_FILE
 get_docker_compose_files() {
@@ -265,5 +288,5 @@ fi
 
 # Execução padrão do docker-compose
 exec_hook "pre_compose"
-docker-compose "$@"
+docker-compose "${args[@]}"
 exec_hook "post_compose"
