@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-export DOCKER_HELPER_VERSION=1.0.4
+export DOCKER_HELPER_VERSION=1.1.0
 
-# O diretório com docker-compose.yml será o PROJECT_ROOT
+# The directory with docker-compose.yml will be the PROJECT_ROOT
 get_project_root() {
     local PROJECT_ROOT="$1"
 
@@ -38,7 +38,44 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.yaml" ]]; then
     export DOCKER_HELPER_FILE_NAME="docker-helper.yaml"
 fi
 
-# Verifica se um valor é verdadeiro
+# Check if docker-compose V1 is installed
+cmd_docker_compose_v1="$(command -v docker-compose)"
+if [ -x "$cmd_docker_compose_v1" ]; then
+    export DOCKER_COMPOSE_V1_INSTALLED="true"
+else
+    export DOCKER_COMPOSE_V1_INSTALLED=""
+fi
+
+# Check if docker compose V2 is installed
+if docker compose &>/dev/null && [ $? -eq 0 ]; then
+    export DOCKER_COMPOSE_V2_INSTALLED="true"
+else
+    export DOCKER_COMPOSE_V2_INSTALLED=""
+fi
+
+# Stop if neither docker-compose nor docker compose is installed
+if [[ -z "$DOCKER_COMPOSE_V1_INSTALLED" && -z "$DOCKER_COMPOSE_V2_INSTALLED" ]]; then
+    echo "ERROR: neither \"docker-compose\" nor \"docker compose\" appear to be installed."
+    exit 1
+fi
+
+# Run docker compose
+run_docker_compose() {
+    # Use docker compose v2 if it is installed
+    if [[ -n "$DOCKER_COMPOSE_V2_INSTALLED" ]]; then
+        docker compose "$@"
+        return
+    fi
+
+    # Use docker compose v1 if it is installed
+    if [[ -n "$DOCKER_COMPOSE_V1_INSTALLED" ]]; then
+        "$cmd_docker_compose_v1" "$@"
+        return
+    fi
+}
+export -f run_docker_compose
+
+# Check if a value is true
 is_true() {
     if [[ "${1,,}" == "true" || "${1,,}" == "yes" || "${1,,}" == "y" || "${1,,}" == '1' ]]; then
         echo '1'
@@ -46,7 +83,7 @@ is_true() {
 }
 export -f is_true
 
-# Leitor de arquivos yaml
+# YAML file reader
 #
 # https://gist.github.com/pkuczynski/8665367
 parse_yaml() {
@@ -85,13 +122,13 @@ parse_yaml() {
 }
 export -f parse_yaml
 
-# Atalho para carregar valores do docker-helper.yml
+# Shortcut to load values from docker-helper.yml
 dhelper_yaml() {
     parse_yaml "$PROJECT_ROOT/$DOCKER_HELPER_FILE_NAME" "DHELPER_"
 }
 export -f dhelper_yaml
 
-# Obtém um valor no docker-helper.yml
+# Get a value in docker-helper.yml
 dhelper_yaml_get() {
     if [[ "$1" ]]; then
         eval $(dhelper_yaml | sed -E "s/^(.*)$/local \1/g")
@@ -100,7 +137,7 @@ dhelper_yaml_get() {
 }
 export -f dhelper_yaml_get
 
-# Atalho para simplificar o uso do executáveis do docker-helper instalados em projetos nos scripts
+# Shortcut to simplify the use of docker-helper executable inside project scripts
 docker-helper() {
     bash "$DHELPER_PATH" "$@"
 }
@@ -134,7 +171,7 @@ version_compare() {
 }
 export -f version_compare
 
-# Obtém os arquivos que serão aplicados na variável COMPOSE_FILE
+# Get the files that will be applied to the COMPOSE_FILE variable
 get_docker_compose_files() {
     local compose_files="$PROJECT_ROOT/$COMPOSE_FILE_NAME"
 
@@ -154,23 +191,23 @@ get_docker_compose_files() {
 }
 
 exec_hook() {
-    # Previne loop infinito ao chamar o docker-helper dentro de um hook
+    # Prevent infinite loop when calling docker-helper inside a hook
     if [[ "$DHELPER_HOOK" ]]; then
         return
     fi
 
     export DHELPER_HOOK="$(echo "$1" | sed "s/-/_/g")"
     if [[ "$2" ]]; then
-        # Hook especifico para um comando
+        # Specific hook for a command
         DHELPER_HOOK="${DHELPER_HOOK}_${2}"
     fi
 
-    # Inclui hook definido no diretório hooks em docker-helper.d
+    # Include hook defined in the hooks directory under docker-helper.d
     if [[ -f "$PROJECT_ROOT/docker-helper.d/hooks/$DHELPER_HOOK" ]]; then
         source "$PROJECT_ROOT/docker-helper.d/hooks/$DHELPER_HOOK"
     fi
 
-    # Executa o hook definido no docker-helper
+    # Execute the hook defined in docker-helper
     if [[ "$(dhelper_yaml_get "DHELPER_hooks_$DHELPER_HOOK")" ]]; then
         bash -c "$(dhelper_yaml_get "DHELPER_hooks_$DHELPER_HOOK")"
     fi
@@ -178,7 +215,7 @@ exec_hook() {
     unset DHELPER_HOOK
 }
 
-# Carrega as Variáveis do docker-helper.yml
+# Load Variables from docker-helper.yml
 source <(
     dhelper_yaml | grep "^DHELPER_variables_" |
         sed -E "s/^DHELPER_variables_//g" |
@@ -186,33 +223,33 @@ source <(
         sed -E "s/^DOCKER_ENV=/DOCKER_ENV_TMP=/;s/^(.*)$/export \1/g"
 )
 
-# Tenta carregar a variável "DOCKER_ENV" do arquivo ".env" se ela não tiver sido definida inline
+# Try to load the "DOCKER_ENV" variable from the ".env" file if it has not been defined inline
 if [[ ! "$DOCKER_ENV" && -f "$PROJECT_ROOT/.env" ]]; then
     source <(sed 's/\r//g' "$PROJECT_ROOT/.env" | grep "^DOCKER_ENV=")
 fi
 
-# Prioridade de uso do DOCKER_ENV
+# DOCKER_ENV usage priority
 #
 # 1. Inline - Ex: DOCKER_ENV=testing ./docker-helper up
-# 2. Definido no .env
-# 3. Definido nas variáveis do docker-helper.yml
-# 4. Valor padrão "production"
+# 2. Defined in .env
+# 3. Defined in docker-helper.yml variables
+# 4. Default value "production"
 DOCKER_ENV="${DOCKER_ENV:-$DOCKER_ENV_TMP}"
 DOCKER_ENV="${DOCKER_ENV:-production}"
 export DOCKER_ENV
 unset DOCKER_ENV_TMP
 
-# Carrega o .env para o tipo de ambiente
+# Load .env for the environment type
 if [[ "$DOCKER_ENV" && -f "$PROJECT_ROOT/.env.$DOCKER_ENV" ]]; then
     source <(sed 's/\r//g' "$PROJECT_ROOT/.env.$DOCKER_ENV" | grep -Ev "^(DHELPER_|PROJECT_ROOT=|DOCKER_ENV=)" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
-# Carrega o restante das variáveis do ".env"
+# Load the rest of the variables from ".env"
 if [[ -f "$PROJECT_ROOT/.env" ]]; then
     source <(sed 's/\r//g' "$PROJECT_ROOT/.env" | grep -Ev "^(DHELPER_|PROJECT_ROOT=|DOCKER_ENV=)" | sed -E -n "s/[^#]+/export &/ p")
 fi
 
-# Lista dos arquivos docker-compose.yml que serão usados
+# List of docker-compose.yml files to be used
 export COMPOSE_FILE="${COMPOSE_FILE:-$(get_docker_compose_files)}"
 
 args=("$@")
@@ -220,21 +257,21 @@ args=("$@")
 exec_hook "init"
 
 if [[ "${args[0]}" == "dh-update" ]]; then
-    # Re-instala o executável
+    # Re-install the executable
     curl -L "https://raw.githubusercontent.com/jhmaverick/docker-helper/master/docker-helper" -o "$DHELPER_PATH"
     chmod +x "$DHELPER_PATH"
 
     exit 0
 elif [[ "${args[0]}" == "version" || "${args[0]}" == "--version" || "${args[0]}" == "-v" ]]; then
-    # Exibe a versão atual do docker-helper, docker-compose e docker
+    # Display the current version of docker-helper, docker compose, and docker
 
     echo "docker-helper version $DOCKER_HELPER_VERSION"
-    docker-compose --version
+    run_docker_compose version
     docker --version
 
     exit 0
 elif [[ ! "$(echo "${args[0]}" | grep "-")" && "$(dhelper_yaml_get "DHELPER_scripts_${args[0]}")" ]]; then
-    # Executa o script definido no docker-helper.yml
+    # Execute the script defined in docker-helper.yml
 
     command_name="${args[0]}"
     exec_hook "pre_commands"
@@ -247,7 +284,7 @@ elif [[ ! "$(echo "${args[0]}" | grep "-")" && "$(dhelper_yaml_get "DHELPER_scri
 
     exit 0
 elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
-    # Executa scripts do diretório docker-helper.d
+    # Execute scripts from the docker-helper.d directory
 
     if [[ ! -x "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
         echo "Script '${args[0]}' is not executable"
@@ -258,7 +295,7 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
     exec_hook "pre_commands"
     exec_hook "pre_command_$command_name"
 
-    # Aplica o caminho completo para um script da aplicação
+    # Apply the full path for an application script
     args[0]="$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}"
     "${args[@]}"
 
@@ -266,16 +303,16 @@ elif [[ -f "$PROJECT_ROOT/docker-helper.d/scripts/${args[0]}" ]]; then
     exec_hook "post_commands"
 
     exit 0
-elif [[ "$(echo "${args[0]}" | grep -e "-exec$")" && "$(docker-compose ps --services | grep -e "^$(echo "${args[0]}" | sed "s/-exec$//")$")" ]]; then
-    # Inicia um serviço do docker-compose para rodar um comando adicionando argumentos para otimizar a execução
-    # O serviço iniciado é o mesmo do nome do comando sem o "-exec" no final
+elif [[ "$(echo "${args[0]}" | grep -e "-exec$")" && "$(run_docker_compose ps --services | grep -e "^$(echo "${args[0]}" | sed "s/-exec$//")$")" ]]; then
+    # Start a docker compose service to run a command adding arguments to optimize execution
+    # The started service is the same as the command name without the "-exec" at the end
 
     command_name="${args[0]}"
     exec_hook "pre_commands"
     exec_hook "pre_command_$command_name"
 
     args[0]="$(echo "${args[0]}" | sed "s/-exec$//")"
-    docker-compose run --rm --no-deps \
+    run_docker_compose run --rm --no-deps \
         -v "$PROJECT_ROOT":"$PROJECT_ROOT" \
         -w "$PWD" \
         "${args[@]}"
@@ -286,7 +323,7 @@ elif [[ "$(echo "${args[0]}" | grep -e "-exec$")" && "$(docker-compose ps --serv
     exit 0
 fi
 
-# Execução padrão do docker-compose
+# Default execution of docker compose
 exec_hook "pre_compose"
-docker-compose "${args[@]}"
+run_docker_compose "${args[@]}"
 exec_hook "post_compose"

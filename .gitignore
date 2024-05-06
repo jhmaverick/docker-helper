@@ -1,6 +1,7 @@
 ### Projeto
 /data/
 /hook-test/
+/local/
 
 ### Docker
 /**/docker-compose.override.yml
