@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+echo "Exit Code: $COMPOSE_EXIT_CODE"

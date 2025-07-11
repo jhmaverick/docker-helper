@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-export DOCKER_HELPER_VERSION=1.1.0
+export DOCKER_HELPER_VERSION=1.1.1
 
 # The directory with docker-compose.yml will be the PROJECT_ROOT
 get_project_root() {
@@ -262,7 +262,7 @@ if [[ "${args[0]}" == "dh-update" ]]; then
     chmod +x "$DHELPER_PATH"
 
     exit 0
-elif [[ "${args[0]}" == "version" || "${args[0]}" == "--version" || "${args[0]}" == "-v" ]]; then
+elif [[ "${args[0]}" =~ ^(version|--version|-v)$ ]]; then
     # Display the current version of docker-helper, docker compose, and docker
 
     echo "docker-helper version $DOCKER_HELPER_VERSION"
@@ -326,4 +326,5 @@ fi
 # Default execution of docker compose
 exec_hook "pre_compose"
 run_docker_compose "${args[@]}"
+export COMPOSE_EXIT_CODE="$?"
 exec_hook "post_compose"
