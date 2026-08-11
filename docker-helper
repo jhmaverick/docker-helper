@@ -51,6 +51,7 @@ else
     cmd_docker_compose_v1=""
     export DOCKER_COMPOSE_V1_INSTALLED=""
 fi
+export cmd_docker_compose_v1
 
 # Check if docker compose V2 is installed
 if docker compose &>/dev/null; then
@@ -68,16 +69,28 @@ fi
 # Run docker compose
 run_docker_compose() {
     # Use docker compose v2 if it is installed
-    if [[ -n "$DOCKER_COMPOSE_V2_INSTALLED" ]]; then
+    if [[ -n "${DOCKER_COMPOSE_V2_INSTALLED:-}" ]]; then
         docker compose "$@"
         return
     fi
 
     # Use docker compose v1 if it is installed
-    if [[ -n "$DOCKER_COMPOSE_V1_INSTALLED" ]]; then
-        "$cmd_docker_compose_v1" "$@"
+    if [[ -n "${DOCKER_COMPOSE_V1_INSTALLED:-}" ]]; then
+        local docker_compose_v1="${cmd_docker_compose_v1:-}"
+
+        if [[ -z "$docker_compose_v1" ]]; then
+            if ! docker_compose_v1="$(command -v docker-compose)"; then
+                echo "ERROR: docker-compose is not available." >&2
+                return 127
+            fi
+        fi
+
+        "$docker_compose_v1" "$@"
         return
     fi
+
+    echo "ERROR: neither \"docker-compose\" nor \"docker compose\" appear to be installed." >&2
+    return 127
 }
 export -f run_docker_compose
 
