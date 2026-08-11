@@ -4,12 +4,8 @@ variables:
   SERVER_PORT: 8080
 
 scripts:
-  test1: "docker ps"
   prod: "docker-compose up -d"
   dev: "docker-compose up --force-recreate"
   recreate: "docker-compose rm -sf && docker-compose up -d"
   update: "docker-compose pull && bash docker-helper recreate"
   remove_all: "docker-compose rm -sf"
-
-hooks:
-  init: "mkdir -p $PROJECT_ROOT/hook-test/test1"

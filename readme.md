@@ -34,9 +34,6 @@ scripts:
   recreate: "docker-compose rm -sf && docker-compose up -d"
   update: "docker-compose pull && docker-helper recreate"
   force-remove: "docker-compose rm -sf"
-
-hooks:
-  init: "mkdir -p $PROJECT_ROOT/hook-test/test1"
 ```
 
 ## Environment

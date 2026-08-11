@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+echo "test 1"
+
+if ! docker-helper failed-command; then
+    echo "Error 1" >&2
+    exit 1
+fi
+
+echo "test 2"
+
+if ! "$PROJECT_ROOT/docker-helper" failed-command; then
+    echo "Error 2" >&2
+    exit 1
+fi
+
+echo "test 3"

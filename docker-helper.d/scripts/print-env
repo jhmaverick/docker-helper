@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -euo pipefail
+
 echo "== Docker Helper Vars"
 echo "PROJECT_ROOT: ${PROJECT_ROOT}"
 echo "PROJECT_NAME: ${PROJECT_NAME}"
